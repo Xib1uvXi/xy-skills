@@ -10,12 +10,39 @@
   "plugins": [
     {
       "name": "xy-skills",
-      "description": "Product specification interviewer, development plan generator, and TAPD agile project management integration.",
+      "description": "All skills: product specification interviewer, development plan generator, and TAPD agile project management integration.",
       "source": "./",
       "strict": false,
       "skills": [
         "./skills/oc-spec",
         "./skills/oc-plan",
+        "./skills/tapd"
+      ]
+    },
+    {
+      "name": "oc-spec",
+      "description": "Deep product specification interviewer. Create comprehensive specs through systematic interviews.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/oc-spec"
+      ]
+    },
+    {
+      "name": "oc-plan",
+      "description": "Development plan generator. Read specs and output structured, phased development plans.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/oc-plan"
+      ]
+    },
+    {
+      "name": "tapd",
+      "description": "TAPD agile project management integration. Manage stories, bugs, tasks, iterations via TAPD API.",
+      "source": "./",
+      "strict": false,
+      "skills": [
         "./skills/tapd"
       ]
     }
