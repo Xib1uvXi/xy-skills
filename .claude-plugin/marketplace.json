@@ -1,0 +1,23 @@
+{
+  "name": "xy-skills",
+  "owner": {
+    "name": "xib"
+  },
+  "metadata": {
+    "description": "Product specification, development planning, and TAPD integration skills",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "xy-skills",
+      "description": "Product specification interviewer, development plan generator, and TAPD agile project management integration.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/oc-spec",
+        "./skills/oc-plan",
+        "./skills/tapd"
+      ]
+    }
+  ]
+}
