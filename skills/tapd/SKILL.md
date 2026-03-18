@@ -1,6 +1,6 @@
 ---
 name: tapd
-description: TAPD 敏捷研发管理平台集成。使用脚本调用 TAPD API，实现需求、缺陷、任务、迭代、测试用例、Wiki 等实体管理。使用场景包括：(1) 查询/创建/更新需求、缺陷、任务、迭代 (2) 管理测试用例和 Wiki (3) 管理评论和工时 (4) 关联需求与缺陷 (5) 获取源码提交关键字
+description: TAPD 敏捷研发管理平台集成。使用脚本调用 TAPD API，实现需求、缺陷、任务、迭代、测试用例、Wiki 等实体管理。使用场景包括：(1) 查询/创建/更新/批量更新需求、缺陷、任务、迭代 (2) 管理测试用例和 Wiki (3) 管理评论和工时 (4) 关联需求与缺陷 (5) 获取变更历史和状态流转时间 (6) 获取项目成员和工作流状态
 ---
 
 # TAPD Skill
@@ -29,6 +29,17 @@ python scripts/tapd.py <command> [参数]
 
 所有命令默认输出 JSON 格式结果。
 
+## 请求频率限制
+
+TAPD API 有请求频率限制，触发限流后会返回错误。使用时须注意：
+
+1. **避免短时间内密集调用**：连续调用多个 API 时，应在请求间适当间隔（建议 0.5~1 秒）
+2. **优先使用批量接口**：更新多条数据时使用 `batch_update_story` / `batch_update_bug`（单次最多 50 条），避免循环逐条更新
+3. **按需查询 count**：查询命令默认不再同时请求总数，需要时手动添加 `--with_count`
+4. **控制分页大小**：`limit` 参数最大 200，建议按实际需要设置合理值，避免请求过大数据量
+5. **避免重复查询**：对于同一请求结果，应缓存使用而非重复调用
+6. **遇到限流时**：如返回限流错误，等待数秒后重试，不要立即重试
+
 ## 命令列表
 
 ### 项目与用户
@@ -37,6 +48,9 @@ python scripts/tapd.py <command> [参数]
 | `get_user_participant_projects` | 获取用户参与的项目列表 |
 | `get_workspace_info` | 获取项目信息 |
 | `get_workitem_types` | 获取需求类别 |
+| `get_workspace_users` | 获取项目成员列表 |
+| `get_sub_workspaces` | 获取子项目信息 |
+| `get_workspace_reports` | 获取项目报告 |
 
 ### 需求/任务
 | 命令 | 说明 |
@@ -44,9 +58,17 @@ python scripts/tapd.py <command> [参数]
 | `get_stories_or_tasks` | 查询需求/任务 |
 | `create_story_or_task` | 创建需求/任务 |
 | `update_story_or_task` | 更新需求/任务 |
+| `batch_update_story` | 批量更新需求（最多50条） |
 | `get_story_or_task_count` | 获取数量 |
 | `get_stories_fields_lable` | 字段中英文对照 |
 | `get_stories_fields_info` | 字段及候选值 |
+| `get_story_changes` | 获取需求变更历史 |
+| `get_task_changes` | 获取任务变更历史 |
+| `get_story_categories` | 获取需求分类 |
+| `get_link_stories` | 获取需求间关联关系 |
+| `get_story_tcase` | 获取需求与测试用例关联 |
+| `get_time_relative_stories` | 获取需求前后置关系 |
+| `get_removed_stories` | 获取回收站的需求 |
 
 ### 缺陷
 | 命令 | 说明 |
@@ -54,7 +76,12 @@ python scripts/tapd.py <command> [参数]
 | `get_bug` | 查询缺陷 |
 | `create_bug` | 创建缺陷 |
 | `update_bug` | 更新缺陷 |
+| `batch_update_bug` | 批量更新缺陷（最多50条） |
 | `get_bug_count` | 获取数量 |
+| `get_bug_changes` | 获取缺陷变更历史 |
+| `get_bug_fields_lable` | 缺陷字段中英文对照 |
+| `get_bug_fields_info` | 缺陷字段及候选值 |
+| `get_removed_bugs` | 获取回收站的缺陷 |
 
 ### 迭代
 | 命令 | 说明 |
@@ -62,6 +89,8 @@ python scripts/tapd.py <command> [参数]
 | `get_iterations` | 查询迭代 |
 | `create_iteration` | 创建迭代 |
 | `update_iteration` | 更新迭代 |
+| `get_iterations_count` | 获取迭代数量 |
+| `get_removed_tasks` | 获取回收站的任务 |
 
 ### 评论
 | 命令 | 说明 |
@@ -87,6 +116,12 @@ python scripts/tapd.py <command> [参数]
 | `get_workflows_status_map` | 状态映射 |
 | `get_workflows_all_transitions` | 状态流转 |
 | `get_workflows_last_steps` | 结束状态 |
+| `get_workflows_first_step` | 起始状态 |
+
+### 度量
+| 命令 | 说明 |
+|------|------|
+| `get_life_times` | 获取状态流转时间 |
 
 ### 测试用例
 | 命令 | 说明 |
@@ -94,6 +129,19 @@ python scripts/tapd.py <command> [参数]
 | `get_tcases` | 查询测试用例 |
 | `create_or_update_tcases` | 创建/更新测试用例 |
 | `create_tcases_batch` | 批量创建测试用例 |
+| `get_tcase_categories` | 获取测试用例目录 |
+
+### 测试计划
+| 命令 | 说明 |
+|------|------|
+| `get_test_plans` | 获取测试计划 |
+| `get_test_plan_progress` | 获取测试计划执行进度 |
+
+### 看板
+| 命令 | 说明 |
+|------|------|
+| `get_board_cards` | 获取看板工作项 |
+| `get_board_columns` | 获取看板板块 |
 
 ### Wiki
 | 命令 | 说明 |
@@ -108,6 +156,7 @@ python scripts/tapd.py <command> [参数]
 | `get_timesheets` | 查询工时 |
 | `add_timesheets` | 填写工时 |
 | `update_timesheets` | 更新工时 |
+| `delete_timesheets` | 删除工时 |
 
 ### 待办
 | 命令 | 说明 |
@@ -124,6 +173,14 @@ python scripts/tapd.py <command> [参数]
 | 命令 | 说明 |
 |------|------|
 | `get_release_info` | 获取发布计划 |
+| `get_launch_forms_count` | 获取发布评审数量 |
+| `create_launch_form` | 创建发布评审 |
+
+### 配置
+| 命令 | 说明 |
+|------|------|
+| `get_modules` | 获取模块 |
+| `get_versions` | 获取版本 |
 
 ### 源码
 | 命令 | 说明 |
@@ -251,6 +308,51 @@ python scripts/tapd.py get_workflows_status_map --workspace_id 123 --system stor
 
 # 获取可流转状态
 python scripts/tapd.py get_workflows_all_transitions --workspace_id 123 --system story
+
+# 获取起始状态
+python scripts/tapd.py get_workflows_first_step --workspace_id 123 --system story
+```
+
+### 变更历史
+
+```bash
+# 查询需求变更历史
+python scripts/tapd.py get_story_changes --workspace_id 123 --story_id 1167459320001114969
+
+# 查询缺陷变更历史
+python scripts/tapd.py get_bug_changes --workspace_id 123 --bug_id 1167459320001114970
+
+# 查询任务变更历史
+python scripts/tapd.py get_task_changes --workspace_id 123 --task_id 1167459320001114971
+```
+
+### 批量更新
+
+```bash
+# 批量更新需求（最多50条）
+python scripts/tapd.py batch_update_story --workspace_id 123 \
+    --workitems_json '[{"id":"1167459320001114969","status":"done"},{"id":"1167459320001114970","v_status":"已完成"}]'
+
+# 批量更新缺陷
+python scripts/tapd.py batch_update_bug --workspace_id 123 \
+    --workitems_json '[{"id":"1167459320001114969","status":"resolved"}]'
+```
+
+### 项目成员
+
+```bash
+# 获取项目成员
+python scripts/tapd.py get_workspace_users --workspace_id 123
+
+# 获取指定字段
+python scripts/tapd.py get_workspace_users --workspace_id 123 --fields "user,role_id,email"
+```
+
+### 度量
+
+```bash
+# 获取状态流转时间
+python scripts/tapd.py get_life_times --workspace_id 123 --entity_type story --entity_id 1167459320001114969
 ```
 
 ## 常用命令速查

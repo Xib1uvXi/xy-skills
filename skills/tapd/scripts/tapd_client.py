@@ -64,7 +64,9 @@ class TAPDClient:
         self.api_user = os.getenv("TAPD_API_USER")
         self.api_password = os.getenv("TAPD_API_PASSWORD")
         self.base_url = os.getenv("TAPD_API_BASE_URL", "https://api.tapd.cn")
-        self.nick = os.getenv("CURRENT_USER_NICK")
+        self._nick = os.getenv("CURRENT_USER_NICK")
+        self._nick_fetched = bool(self._nick)
+        self._mini_project_cache = {}
 
         if self.access_token:
             self.headers = {
@@ -72,7 +74,6 @@ class TAPDClient:
                 "Content-Type": "application/json",
                 "Via": "mcp"
             }
-            self.nick = self.get_user_info() or self.nick
         elif self.api_user and self.api_password:
             auth_str = f"{self.api_user}:{self.api_password}"
             self.headers = {
@@ -80,6 +81,13 @@ class TAPDClient:
                 "Content-Type": "application/json",
                 "Via": "mcp"
             }
+
+    @property
+    def nick(self):
+        if not self._nick_fetched and self.access_token:
+            self._nick_fetched = True
+            self._nick = self.get_user_info() or self._nick
+        return self._nick
 
     def _make_request(self, method: str, endpoint: str,
                       params: Optional[Dict] = None,
@@ -130,7 +138,7 @@ class TAPDClient:
         try:
             response = self._make_request("GET", "users/info")
             return response.get("data", {}).get("nick")
-        except:
+        except Exception:
             return None
 
     def get_user_participant_projects(self, data: Dict) -> Dict:
@@ -141,13 +149,25 @@ class TAPDClient:
 
     def get_workspace_info(self, data: Dict) -> Dict:
         """获取项目信息"""
-        workspace_id = data.get("workspace_id")
-        return self._make_request("GET", f"workspaces/get_workspace_info?workspace_id={workspace_id}")
+        return self._make_request("GET", "workspaces/get_workspace_info", params=data)
 
     def get_workitem_types(self, data: Dict) -> Dict:
         """获取需求类别"""
-        workspace_id = data.get("workspace_id")
-        return self._make_request("GET", f"workitem_types?workspace_id={workspace_id}", params=data)
+        return self._make_request("GET", "workitem_types", params=data)
+
+    def get_workspace_users(self, params: Dict) -> Dict:
+        """获取项目成员列表"""
+        return self._make_request("GET", "workspaces/users", params=params)
+
+    def get_sub_workspaces(self, params: Dict) -> Dict:
+        """获取子项目信息"""
+        return self._make_request("GET", "workspaces/sub_workspaces", params=params)
+
+    def get_workspace_reports(self, params: Dict) -> Dict:
+        """获取项目报告"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "workspace_reports", params=default_params)
 
     # ============ 需求/任务相关 ============
 
@@ -192,6 +212,49 @@ class TAPDClient:
         workspace_id = data.get("workspace_id")
         return self._make_request("GET", f"stories/get_fields_info?workspace_id={workspace_id}")
 
+    def get_story_changes(self, params: Dict) -> Dict:
+        """获取需求变更历史"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "story_changes", params=default_params)
+
+    def get_task_changes(self, params: Dict) -> Dict:
+        """获取任务变更历史"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "task_changes", params=default_params)
+
+    def batch_update_story(self, data: Dict) -> Dict:
+        """批量更新需求（最多50条）"""
+        if self.nick:
+            for item in data.get("workitems", []):
+                item.setdefault("current_user", self.nick)
+        return self._make_request("POST", "stories/batch_update_story", data=data)
+
+    def get_story_categories(self, params: Dict) -> Dict:
+        """获取需求分类"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "story_categories", params=default_params)
+
+    def get_link_stories(self, params: Dict) -> Dict:
+        """获取需求与其它需求的关联关系"""
+        return self._make_request("GET", "stories/get_link_stories", params=params)
+
+    def get_story_tcase(self, params: Dict) -> Dict:
+        """获取需求与测试用例关联关系"""
+        return self._make_request("GET", "stories/get_story_tcase", params=params)
+
+    def get_time_relative_stories(self, params: Dict) -> Dict:
+        """获取需求前后置关系"""
+        return self._make_request("GET", "stories/get_time_relative_stories", params=params)
+
+    def get_removed_stories(self, params: Dict) -> Dict:
+        """获取回收站的需求"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "stories/get_removed_stories", params=default_params)
+
     # ============ 缺陷相关 ============
 
     def get_bug(self, params: Dict) -> Dict:
@@ -220,17 +283,40 @@ class TAPDClient:
 
         return self._make_request("POST", "bugs", data=data)
 
+    def get_bug_changes(self, params: Dict) -> Dict:
+        """获取缺陷变更历史"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "bug_changes", params=default_params)
+
+    def get_bug_fields_lable(self, data: Dict) -> Dict:
+        """获取缺陷字段中英文对照"""
+        workspace_id = data.get("workspace_id")
+        return self._make_request("GET", f"bugs/get_fields_lable?workspace_id={workspace_id}")
+
+    def get_bug_fields_info(self, data: Dict) -> Dict:
+        """获取缺陷字段及候选值"""
+        workspace_id = data.get("workspace_id")
+        return self._make_request("GET", f"bugs/get_fields_info?workspace_id={workspace_id}")
+
+    def batch_update_bug(self, data: Dict) -> Dict:
+        """批量更新缺陷（最多50条）"""
+        if self.nick:
+            for item in data.get("workitems", []):
+                item.setdefault("current_user", self.nick)
+        return self._make_request("POST", "bugs/batch_update_bug", data=data)
+
+    def get_removed_bugs(self, params: Dict) -> Dict:
+        """获取回收站的缺陷"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "bugs/get_removed_bugs", params=default_params)
+
     # ============ 迭代相关 ============
 
     def get_iterations(self, data: Dict) -> Dict:
         """获取迭代"""
-        workspace_id = data.get("workspace_id")
-        params = f"?workspace_id={workspace_id}"
-        if 'id' in data:
-            params += f"&id={data['id']}"
-        if 'name' in data:
-            params += f"&name={data['name']}"
-        return self._make_request("GET", f"iterations{params}", params=data)
+        return self._make_request("GET", "iterations", params=data)
 
     def create_or_update_iteration(self, data: Dict) -> Dict:
         """创建/更新迭代"""
@@ -240,6 +326,16 @@ class TAPDClient:
             else:
                 data['creator'] = self.nick
         return self._make_request("POST", "iterations", data=data)
+
+    def get_iterations_count(self, params: Dict) -> Dict:
+        """获取迭代数量"""
+        return self._make_request("GET", "iterations/count", params=params)
+
+    def get_removed_tasks(self, params: Dict) -> Dict:
+        """获取回收站的任务"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "tasks/get_removed_tasks", params=default_params)
 
     # ============ 评论相关 ============
 
@@ -288,32 +384,27 @@ class TAPDClient:
 
     def get_workflows_status_map(self, data: Dict) -> Dict:
         """获取状态映射"""
-        workspace_id = data.get("workspace_id")
-        system = data.get("system")
-        params = f"?workspace_id={workspace_id}&system={system}"
-        if 'workitem_type_id' in data:
-            params += f"&workitem_type_id={data['workitem_type_id']}"
-        return self._make_request("GET", f"workflows/status_map{params}")
+        return self._make_request("GET", "workflows/status_map", params=data)
 
     def get_workflows_all_transitions(self, data: Dict) -> Dict:
         """获取状态流转"""
-        workspace_id = data.get("workspace_id")
-        system = data.get("system")
-        params = f"?workspace_id={workspace_id}&system={system}"
-        if 'workitem_type_id' in data:
-            params += f"&workitem_type_id={data['workitem_type_id']}"
-        return self._make_request("GET", f"workflows/all_transitions{params}")
+        return self._make_request("GET", "workflows/all_transitions", params=data)
 
     def get_workflows_last_steps(self, data: Dict) -> Dict:
         """获取结束状态"""
-        workspace_id = data.get("workspace_id")
-        system = data.get("system")
-        params = f"?workspace_id={workspace_id}&system={system}"
-        if 'workitem_type_id' in data:
-            params += f"&workitem_type_id={data['workitem_type_id']}"
-        if 'type' in data:
-            params += f"&type={data['type']}"
-        return self._make_request("GET", f"workflows/last_steps{params}")
+        return self._make_request("GET", "workflows/last_steps", params=data)
+
+    def get_workflows_first_step(self, data: Dict) -> Dict:
+        """获取起始状态"""
+        return self._make_request("GET", "workflows/first_step", params=data)
+
+    # ============ 度量相关 ============
+
+    def get_life_times(self, params: Dict) -> Dict:
+        """获取状态流转时间"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "life_times", params=default_params)
 
     # ============ 测试用例相关 ============
 
@@ -342,6 +433,42 @@ class TAPDClient:
             for tcase in data:
                 tcase.setdefault('creator', self.nick)
         return self._make_request("POST", "tcases/batch_save", data=data)
+
+    def get_tcase_categories(self, params: Dict) -> Dict:
+        """获取测试用例目录"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "tcase_categories", params=default_params)
+
+    # ============ 测试计划相关 ============
+
+    def get_test_plans(self, params: Dict) -> Dict:
+        """获取测试计划"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "test_plans", params=default_params)
+
+    def get_test_plans_count(self, params: Dict) -> Dict:
+        """获取测试计划数量"""
+        return self._make_request("GET", "test_plans/count", params=params)
+
+    def get_test_plan_progress(self, params: Dict) -> Dict:
+        """获取测试计划执行进度"""
+        return self._make_request("GET", "test_plans/get_test_plan_progress", params=params)
+
+    # ============ 看板相关 ============
+
+    def get_board_cards(self, params: Dict) -> Dict:
+        """获取看板工作项"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "board_cards", params=default_params)
+
+    def get_board_columns(self, params: Dict) -> Dict:
+        """获取看板板块"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "board_columns", params=default_params)
 
     # ============ Wiki 相关 ============
 
@@ -376,6 +503,10 @@ class TAPDClient:
             data['owner'] = self.nick
         return self._make_request("POST", "timesheets", data=data)
 
+    def delete_timesheets(self, data: Dict) -> Dict:
+        """删除工时"""
+        return self._make_request("POST", "timesheets/delete", data=data)
+
     # ============ 待办相关 ============
 
     def get_todo(self, data: Dict) -> Dict:
@@ -400,6 +531,30 @@ class TAPDClient:
         """获取发布计划"""
         return self._make_request("GET", "releases", params=params)
 
+    def get_launch_forms_count(self, params: Dict) -> Dict:
+        """获取发布评审数量"""
+        return self._make_request("GET", "launch_forms/count", params=params)
+
+    def create_launch_form(self, data: Dict) -> Dict:
+        """创建发布评审"""
+        if self.nick:
+            data.setdefault('creator', self.nick)
+        return self._make_request("POST", "launch_forms", data=data)
+
+    # ============ 配置相关 ============
+
+    def get_modules(self, params: Dict) -> Dict:
+        """获取模块"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "modules", params=default_params)
+
+    def get_versions(self, params: Dict) -> Dict:
+        """获取版本"""
+        default_params = {"page": 1, "limit": 30}
+        default_params.update(params)
+        return self._make_request("GET", "versions", params=default_params)
+
     # ============ 源码提交关键字 ============
 
     def get_scm_copy_keywords(self, data: Dict) -> Dict:
@@ -412,7 +567,6 @@ class TAPDClient:
 
     def send_message(self, data: Dict) -> str:
         """发送企业微信消息"""
-        import requests as req
         bot_url = os.getenv("BOT_URL")
         msg = data.get("msg", "")
 
@@ -427,7 +581,7 @@ class TAPDClient:
                 'markdown_v2': {'content': msg}
             }
 
-        response = req.post(
+        response = requests.post(
             url=bot_url,
             headers={'Content-Type': 'application/json'},
             json=chat_data,
@@ -442,6 +596,32 @@ class TAPDClient:
         return self._make_request("GET", "story_categories", params=data)
 
     # ============ 工具方法 ============
+
+    @staticmethod
+    def _unwrap_entity(item: dict):
+        """解包实体包装器，返回 (entity_key, inner_dict)"""
+        for key in ('Story', 'Bug', 'Task', 'Iteration'):
+            if key in item and isinstance(item[key], dict):
+                return key, item[key]
+        return None, item
+
+    @staticmethod
+    def _wrap_entity(entity_key, obj: dict) -> dict:
+        """根据 entity_key 重新包装"""
+        return {entity_key: obj} if entity_key else obj
+
+    def _filter_obj_fields(self, obj: dict, entity_key, fields: list = None) -> dict:
+        """过滤单个对象的字段"""
+        new_obj = {}
+        for k, v in obj.items():
+            if k.startswith('custom_field_') and (v is None or v == '') and (not fields or k not in fields):
+                continue
+            if k.startswith('description') and entity_key != 'Iteration' and (not fields or k not in fields):
+                continue
+            if k.startswith('custom_plan_field_') and v == '0':
+                continue
+            new_obj[k] = v
+        return new_obj
 
     def filter_fields(self, data_list: List, fields_param: Optional[str] = None) -> List:
         """过滤字段"""
@@ -458,37 +638,9 @@ class TAPDClient:
         filtered = []
         for item in data_list:
             if isinstance(item, dict):
-                if 'Story' in item and isinstance(item['Story'], dict):
-                    obj = item['Story']
-                elif 'Bug' in item and isinstance(item['Bug'], dict):
-                    obj = item['Bug']
-                elif 'Task' in item and isinstance(item['Task'], dict):
-                    obj = item['Task']
-                elif 'Iteration' in item and isinstance(item['Iteration'], dict):
-                    obj = item['Iteration']
-                else:
-                    obj = item
-
-                new_obj = {}
-                for k, v in obj.items():
-                    if k.startswith('custom_field_') and (v is None or v == '') and (not fields_param or k not in fields):
-                        continue
-                    if k.startswith('description') and 'Iteration' not in item and (not fields_param or k not in fields):
-                        continue
-                    if k.startswith('custom_plan_field_') and v == '0':
-                        continue
-                    new_obj[k] = v
-
-                if 'Story' in item:
-                    filtered.append({'Story': new_obj})
-                elif 'Bug' in item:
-                    filtered.append({'Bug': new_obj})
-                elif 'Task' in item:
-                    filtered.append({'Task': new_obj})
-                elif 'Iteration' in item:
-                    filtered.append({'Iteration': new_obj})
-                else:
-                    filtered.append(new_obj)
+                entity_key, obj = self._unwrap_entity(item)
+                new_obj = self._filter_obj_fields(obj, entity_key, fields)
+                filtered.append(self._wrap_entity(entity_key, new_obj))
             else:
                 filtered.append(item)
         return filtered
@@ -497,37 +649,9 @@ class TAPDClient:
         """过滤创建/更新的字段"""
         if not item:
             return item
-
-        if 'Story' in item and isinstance(item['Story'], dict):
-            obj = item['Story']
-        elif 'Bug' in item and isinstance(item['Bug'], dict):
-            obj = item['Bug']
-        elif 'Task' in item and isinstance(item['Task'], dict):
-            obj = item['Task']
-        elif 'Iteration' in item and isinstance(item['Iteration'], dict):
-            obj = item['Iteration']
-        else:
-            obj = item
-
-        new_obj = {}
-        for k, v in obj.items():
-            if k.startswith('custom_field_') and (v is None or v == ''):
-                continue
-            if k.startswith('description') and 'Iteration' not in item:
-                continue
-            if k.startswith('custom_plan_field_') and v == '0':
-                continue
-            new_obj[k] = v
-
-        if 'Story' in item:
-            return {'Story': new_obj}
-        elif 'Bug' in item:
-            return {'Bug': new_obj}
-        elif 'Task' in item:
-            return {'Task': new_obj}
-        elif 'Iteration' in item:
-            return {'Iteration': new_obj}
-        return new_obj
+        entity_key, obj = self._unwrap_entity(item)
+        new_obj = self._filter_obj_fields(obj, entity_key)
+        return self._wrap_entity(entity_key, new_obj)
 
     def get_story_or_task_url_template(self, workspace_id: int, entity_type: str, tapd_base_url: str) -> str:
         """获取 URL 模板"""
@@ -541,7 +665,11 @@ class TAPDClient:
                 return f'{tapd_base_url}/{workspace_id}/prong/stories/view/{{id}}'
 
     def check_mini_project(self, workspace_id: int) -> bool:
-        """判断是否轻协作项目"""
-        data = {"workspace_id": workspace_id}
-        ret = self.get_workspace_info(data)
-        return ret.get('data', {}).get('Workspace', {}).get('category') == 'mini_project'
+        """判断是否轻协作项目（结果缓存）"""
+        if workspace_id not in self._mini_project_cache:
+            data = {"workspace_id": workspace_id}
+            ret = self.get_workspace_info(data)
+            self._mini_project_cache[workspace_id] = (
+                ret.get('data', {}).get('Workspace', {}).get('category') == 'mini_project'
+            )
+        return self._mini_project_cache[workspace_id]
