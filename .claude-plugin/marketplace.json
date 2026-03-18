@@ -4,19 +4,21 @@
     "name": "xib"
   },
   "metadata": {
-    "description": "Product specification, development planning, and TAPD integration skills",
+    "description": "Product specification, development planning, TAPD integration, Go code review, and Kratos TDD skills",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "xy-skills",
-      "description": "All skills: product specification interviewer, development plan generator, and TAPD agile project management integration.",
+      "description": "All skills: product specification interviewer, development plan generator, TAPD agile project management integration, Go code review, and Kratos TDD.",
       "source": "./",
       "strict": false,
       "skills": [
         "./skills/oc-spec",
         "./skills/oc-plan",
-        "./skills/tapd"
+        "./skills/tapd",
+        "./skills/go-code-review",
+        "./skills/kratos-tdd"
       ]
     },
     {
@@ -44,6 +46,24 @@
       "strict": false,
       "skills": [
         "./skills/tapd"
+      ]
+    },
+    {
+      "name": "go-code-review",
+      "description": "Expert Go code review for Kratos/gRPC/GORM projects. Structured P0-P3 findings with actionable fixes.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/go-code-review"
+      ]
+    },
+    {
+      "name": "kratos-tdd",
+      "description": "Test-Driven Development for Go Kratos microservices. Strict Red-Green-Refactor cycle across DDD layers.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/kratos-tdd"
       ]
     }
   ]
