@@ -18,7 +18,8 @@
         "./skills/oc-plan",
         "./skills/tapd",
         "./skills/go-code-review",
-        "./skills/kratos-tdd"
+        "./skills/kratos-tdd",
+        "./skills/prd"
       ]
     },
     {
@@ -64,6 +65,15 @@
       "strict": false,
       "skills": [
         "./skills/kratos-tdd"
+      ]
+    },
+    {
+      "name": "prd",
+      "description": "Generate high-quality Product Requirements Documents (PRDs) with executive summaries, user stories, technical specifications, and risk analysis.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/prd"
       ]
     }
   ]

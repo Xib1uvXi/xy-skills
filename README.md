@@ -17,6 +17,7 @@ Claude Code 自定义技能插件集。
 /plugin install tapd@xy-skills            # TAPD 项目管理集成
 /plugin install go-code-review@xy-skills  # Go 代码审查
 /plugin install kratos-tdd@xy-skills      # Kratos TDD
+/plugin install prd@xy-skills             # PRD 文档生成器
 ```
 
 也可以在项目的 `.claude/settings.json` 中配置自动安装：
@@ -41,6 +42,7 @@ Claude Code 自定义技能插件集。
 | tapd | `/tapd` | TAPD 敏捷研发管理集成（需求、缺陷、迭代、工时等） |
 | go-code-review | `/go-code-review` | Go 代码审查（Kratos/gRPC/GORM），P0-P3 分级报告到 `.claude/issues/` |
 | kratos-tdd | `/kratos-tdd` | Kratos 微服务 TDD，Red-Green-Refactor + DDD 分层（biz→data→service→server） |
+| prd | `/prd` | 生成高质量产品需求文档（PRD），包含执行摘要、用户故事、技术规格和风险分析 |
 
 ## tapd 环境配置
 
